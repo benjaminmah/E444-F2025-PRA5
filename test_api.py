@@ -2,6 +2,7 @@ import time, csv, pathlib
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
+from typing import Dict
 
 BASE_URL = "http://ece444-pra5-env.eba-uxzhdqtz.us-east-2.elasticbeanstalk.com/predict"
 N_CALLS = 100
@@ -66,13 +67,23 @@ def main():
     # Only successful calls for latency stats/plot
     ok = df[df["status_code"] == 200]
     plt.figure(figsize=(9,6))
-    ok.boxplot(column="latency_ms", by="case", grid=False)
+    ax = ok.boxplot(column="latency_ms", by="case", grid=False, return_type=None)
     plt.title("API Latency per Test Case (ms)"); plt.suptitle("")
     plt.xlabel("Test Case"); plt.ylabel("Latency (ms)")
+
+    # Compute and annotate averages on the plot
+    avgs = ok.groupby("case")["latency_ms"].mean().round(2)
+    max_by_case: Dict[str, float] = ok.groupby("case")["latency_ms"].max().to_dict()
+    # Pandas boxplot orders categories alphabetically by default
+    categories = sorted(avgs.index.tolist())
+    for idx, case in enumerate(categories, start=1):
+        mean_val = avgs[case]
+        y = max(max_by_case.get(case, mean_val), mean_val) * 1.02
+        plt.text(idx, y, f"{mean_val:.2f} ms", ha="center", va="bottom", fontsize=9, color="#333")
+
     plt.tight_layout()
     plt.savefig(OUT_DIR / "latency_boxplot.png", dpi=300)
 
-    avgs = ok.groupby("case")["latency_ms"].mean().round(2)
     with open(OUT_DIR / "latency_averages.txt", "w") as f:
         f.write("Average latency (ms) by case\n")
         for k, v in avgs.items():
