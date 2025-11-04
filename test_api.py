@@ -67,19 +67,13 @@ def main():
     # Only successful calls for latency stats/plot
     ok = df[df["status_code"] == 200]
     plt.figure(figsize=(9,6))
+    # Show fliers (outliers) and default scaling
     ax = ok.boxplot(column="latency_ms", by="case", grid=False, return_type=None)
     plt.title("API Latency per Test Case (ms)"); plt.suptitle("")
     plt.xlabel("Test Case"); plt.ylabel("Latency (ms)")
 
-    # Compute and annotate averages on the plot
+    # Compute averages (used for the text file), but do not annotate the plot
     avgs = ok.groupby("case")["latency_ms"].mean().round(2)
-    max_by_case: Dict[str, float] = ok.groupby("case")["latency_ms"].max().to_dict()
-    # Pandas boxplot orders categories alphabetically by default
-    categories = sorted(avgs.index.tolist())
-    for idx, case in enumerate(categories, start=1):
-        mean_val = avgs[case]
-        y = max(max_by_case.get(case, mean_val), mean_val) * 1.02
-        plt.text(idx, y, f"{mean_val:.2f} ms", ha="center", va="bottom", fontsize=9, color="#333")
 
     plt.tight_layout()
     plt.savefig(OUT_DIR / "latency_boxplot.png", dpi=300)
